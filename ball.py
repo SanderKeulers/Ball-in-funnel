@@ -1,61 +1,68 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-Created on Wed Oct  6 22:29:43 2021
+Created on Fri Aug  4 07:28:38 2023
 
-@author: sande
+@author: Sander.Keulers
 """
 
-import numpy as np
-import math as M
+from matplotlib.widgets import Slider
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import math as M
+import numpy as np
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-def Trechter(omega):
-    #%% Constants
-    alpha   = 1/np.sqrt(4)          # Half angle of the funnel [rad]
-   
+def Funnel(omega, alpha, mu):
+    
+    """
+    Main function, dependent on initial angular velocity (omega) and half angle of the funnel (alpha)
+    """
+    
+    ## Constants
+    
     g       = 9.81                  # Gravitational acceleration [m s**-2]
-    m       = 0.01                  # Mass of ball [kg]
+    m       = 0.05                  # Mass of ball [kg]
     R       = 0.01                  # Radius of ball [m]
     I       = (2/5)*m*R**2          # Moment of inertia[kg m**2]
-    c       = 0
-   
-    #%% Functions
+
+    c       = mu*m*g
+    
     def d2theta_dt(t,r,dr_dt,dtheta_dt):
         """
         Returns the change in angular velocity as function of angular velocity,
         change in radius/height and radius/height
         """
         return M.exp(-c*t)*((7/5)*-2*dtheta_dt*dr_dt/r)
-   
+    
     def d2dr_dt(t,r,dtheta_dt,dr_dt):
         """
         Returns the change in vertical velocity as a function of the angular velocity
         and the radius/height
         """
         return M.exp(c*t)*(((7/5)*r*dtheta_dt**2 * np.sin(alpha)**2 - g*np.cos(alpha)*np.sin(alpha)))
-   
-   
-    #%% Initial conditions
+    
+    ## Initial conditions
+    
     r       = 0.5           # Initial radius of cone of the position of marble
-    h       = 2*r/M.tan(alpha) # Initial height corresponding to initial radius
+    h       = 3             # Initial height 
     dr_dt   = 0             # Initial vertical velocity
     theta   = 0             # Initial angular position
     dtheta_dt = omega      # Initial angular velocity
-   
-    #%% Time definition and creating emtpy lists
+    
+    ## Time definition and creating empty lists
+    
     t      = 0
-    dt     = 0.0001
-   
+    dt     = 0.001
+    
     height = []         # Height of ball = h
     x      = []         # x-position of ball = cos(alpha)*h
     y      = []         # y-position of ball = cos(alpha)*h
-   
+    
     time   = []
-   
+    
+    
+    ## Main while loop following fourth-order Runga-Kutta scheme
     while h>0.03:
+        
         t = t+dt
         time.append(t)
         k1 = dt*d2theta_dt(t,r,dr_dt,dtheta_dt)
@@ -89,19 +96,70 @@ def Trechter(omega):
        
         if h<0.03:
             alpha = M.pi
-   
+            
+    return x,y,height 
+            
+            
+#%%
 
-    #%%
-   
-   
-   
-    ax.plot(x,y,height,label='$\omega = $'+str(omega))
-    ax.set_xlim(-1,1)
-    ax.set_ylim(-1,1)
-    ax.set_zlim(0,2)
-    plt.legend()
 
-w = np.arange(1*M.pi, 8*M.pi, M.pi)
+fig = plt.figure(figsize=(6, 6))
+ax = fig.add_subplot(111)
+fig.subplots_adjust(bottom=0.2, top=0.75)
 
-for i in w:
-    Trechter(i)
+
+ax_alpha = fig.add_axes([0.3, 0.85, 0.4, 0.05])
+ax_alpha.spines['top'].set_visible(True)
+ax_alpha.spines['right'].set_visible(True)
+
+ax_omega = fig.add_axes([0.3, 0.92, 0.4, 0.05])
+ax_omega.spines['top'].set_visible(True)
+ax_omega.spines['right'].set_visible(True)
+
+ax_mu = fig.add_axes([0.3, 0.78, 0.4, 0.05])
+ax_mu.spines['top'].set_visible(True)
+ax_mu.spines['right'].set_visible(True)
+
+
+slider_alpha = Slider(ax=ax_alpha,valmin=1/np.sqrt(8), valmax=1/np.sqrt(2), label='alpha',
+              valfmt=' %1.1f ')
+
+slider_omega = Slider(ax=ax_omega,valmin=M.pi, valmax=14*M.pi, label='omega',
+              valfmt=' %1.1f ')
+
+
+slider_mu = Slider(ax=ax_mu,valmin=0.0, valmax=0.6, label='mu',
+              valfmt=' %0.01f ')
+
+
+x,y,height = Funnel(8*M.pi,1/np.sqrt(4),0.0)
+
+
+
+f_funnel, = ax.plot(x,height)
+ax.set_xlim(min(x)-np.std(x),max(x)+np.std(x))
+ax.set_ylim(min(height)-np.std(height),max(height)+np.std(height))
+ax.set_xlabel('x-axis [m]')
+ax.set_ylabel('Height [m]')
+
+
+def update(val):
+    omega = slider_omega.val
+    alpha = slider_alpha.val
+    mu = slider_mu.val
+    x,y,height = Funnel(omega,alpha,mu)
+    f_funnel.set_data(x, height)
+    ax.set_xlim(min(x)-np.std(x),max(x)+np.std(x))
+    ax.set_ylim(min(height)-np.std(height),max(height)+np.std(height))
+    fig.canvas.draw_idle()
+    
+slider_alpha.on_changed(update)
+slider_omega.on_changed(update)
+slider_mu.on_changed(update)
+
+
+
+
+
+
+
